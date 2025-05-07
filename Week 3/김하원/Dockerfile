@@ -1,18 +1,26 @@
-# FROM 베이스 이미지
-ARG NODE_VERSION
-FROM node:${NODE_VERSION}
+# 1. 베이스 이미지
+FROM node:20.15.1
 
-# COPY <복사할 경로> <붙여넣기를 할 경로>
-COPY . /app
+# 2. 작업 디렉토리 설정
+WORKDIR /apps/mbti
 
-# 소스코드 디렉토리
-WORKDIR /app
+# 3. 패키지 복사 (node_modules 제외)
+COPY package*.json ./
+RUN npm install
 
-# 소스코드 시작 (npm run)
-RUN npm run 
+# 4. 애플리케이션 소스 복사
+COPY . .
 
-# 환경변수 정의 
-ENV PORT=27017
+# 5. 환경 변수 설정 
+ENV PORT=3001 \
+    DB_HOST=localhost \
+    DB_PORT=3306 \
+    DB_NAME=db_mbti \
+    DB_USERNAME=user_mbti \
+    DB_PASSWORD=pw_mbti
 
-# 소스코드 실행
-ENTRYPOINT ["start"]
+# 6. 앱 실행 포트 개방
+EXPOSE 3001
+
+# 7. 앱 실행 명령
+CMD ["npm", "run", "start"]
