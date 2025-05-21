@@ -1,0 +1,70 @@
+# ─────────────────────────────────────────────────────────
+# (1) Compose 파일 포맷 버전
+#    - v2, v3 등 여러 버전이 있으며, 주로 '3.8' 이상을 사용
+version: '3.8'
+
+# ─────────────────────────────────────────────────────────
+# (2) 환경변수 파일(.env) 지정 (선택)
+#    - Compose 실행 시 자동으로 .env 읽어서 ${VAR} 치환
+# env_file:
+#   - .env
+
+# ─────────────────────────────────────────────────────────
+# (3) 서비스 정의
+services:
+  # ┌──────────────────────────────────────────────────────
+  # │ 서비스 이름 (이름대로 컨테이너가 생성됨)
+  app:
+    # ├─ 이미지 사용
+    image: my-org/my-app:latest
+    # ├─ 없으면 빌드
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        # build-arg KEY=VALUE 형식
+        - NODE_VERSION=20
+    # ├─ 컨테이너 이름 고정
+    container_name: app
+    # ├─ 환경변수
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+    # ├─ 포트 매핑: "호스트:컨테이너"
+    ports:
+      - "4000:3000"
+    # ├─ 볼륨 마운트: "호스트경로:컨테이너경로"
+    volumes:
+      - ./app-data:/usr/src/app/data
+    # ├─ 네트워크 연결
+    networks:
+      - front-net
+    # └─ (선택) 서비스 시작 순서 보장
+    depends_on:
+      - db
+
+  # ┌──────────────────────────────────────────────────────
+  db:
+    image: mysql:8.0
+    container_name: db
+    environment:
+      - MYSQL_ROOT_PASSWORD=secret
+      - MYSQL_DATABASE=mydb
+      - MYSQL_USER=user
+      - MYSQL_PASSWORD=password
+    volumes:
+      - db-data:/var/lib/mysql
+    networks:
+      - front-net
+
+# ─────────────────────────────────────────────────────────
+# (4) 사용자 정의 네트워크
+networks:
+  front-net:
+    driver: bridge
+
+# ─────────────────────────────────────────────────────────
+# (5) 볼륨 (영구 저장 영역)
+volumes:
+  db-data:
+    name: myproject-db-data
