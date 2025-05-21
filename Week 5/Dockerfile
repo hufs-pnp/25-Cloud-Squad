@@ -1,57 +1,27 @@
-# ─── 빌드 스테이지 ───────────────────────────────────────
-FROM python:3.12-slim AS builder
+# Node 설치. (이미지 관점 - 맨 아래 Layer (Base image))
+# FROM 베이스 이미지
+ARG NODE_VERSION
+FROM node:${NODE_VERSION}
 
-# 환경 변수
-ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
+# 소스코드 다운로드
+# COPY <복사할 경로> <붙여넣기를 할 경로>
+COPY . /apps/mbti
 
-# 시스템 빌드 종속성 (fuzzywuzzy[speedup]용 컴파일러)
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    libffi-dev \
-    libssl-dev \
-  && rm -rf /var/lib/apt/lists/*
+# 소스코드의 최상단 디렉토리로 이동
+WORKDIR /apps/mbti
 
-WORKDIR /app
+# 소스코드를 실행할 때 필요한 파일 다운로드 (npm ci)
+# 소스코드를 빌드 (npm run build)
+RUN npm ci \
+&& npm run build
 
-# 의존성 설치 (패키지는 /app/dependencies 에 설치)
-COPY requirements.txt .
-RUN pip install --upgrade pip \
- && pip install --no-cache-dir -r requirements.txt -t /app/dependencies
+# 환경변수 정의 (PORT)
+ENV PORT="3000" \
+    DB_HOST="localhost" \
+    DB_PORT="3306" \
+    DB_NAME="db_mbti" \
+    DB_USERNAME="user_mbti" \
+    DB_PASSWORD="pw_mbti"
 
-# ─── 런타임 스테이지 ────────────────────────────────────
-FROM python:3.12-slim
-
-ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
-
-WORKDIR /app
-
-# 런타임 종속성 (pydub 의존인 ffmpeg 등)
-RUN apt-get update && apt-get install -y \
-    ffmpeg \
-    libsndfile1 \
-  && rm -rf /var/lib/apt/lists/*
-
-# 빌드 스테이지에서 설치한 Python 패키지와 스크립트 복사
-COPY --from=builder /app/dependencies /usr/local/lib/python3.12/site-packages
-COPY --from=builder /app/dependencies/bin /usr/local/bin
-
-# 애플리케이션 소스 복사
-COPY . .
-
-# 로그 디렉터리 생성
-RUN mkdir -p /app/logs
-
-# PYTHONPATH 설정 (optional)
-ENV PYTHONPATH=/app
-
-# FastAPI 포트 개방
-EXPOSE 8000
-
-# 실행 명령
-CMD ["uvicorn", "main:app", \
-     "--host", "0.0.0.0", \
-     "--port", "8000", \
-     "--reload", \
-     "--log-config", "logging_config.json"]
+# 소스코드 실행 (npm run start)
+ENTRYPOINT ["npm", "run", "start"]
